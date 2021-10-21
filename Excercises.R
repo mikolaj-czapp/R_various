@@ -216,3 +216,131 @@ aa + scale_y_log10()
 aa + scale_x_sqrt()
 aa  + scale_y_log10() + scale_x_log10()
 
+
+
+
+library(ggplot2)
+library(dplyr)
+library(ggthemes)
+library(grid)
+library(scales)
+library(khroma)
+library(extrafont)
+
+#some fun with visualizing data
+
+avocado <- read.csv("avocado.csv", sep = ',')
+
+avocado <- mutate(avocado, Date = as.Date(Date))
+
+#plot with dot representing the median, the empty space is interquartile range,
+#and the bars are the scope
+plot <- ggplot(avocado, aes(x=factor(region), y=AveragePrice)) 
+plot + theme_tufte(ticks = F) + geom_tufteboxplot() + 
+  theme(axis.text.x = element_text(angle = 45))
+
+# Google Docs style (max 10 colours)
+
+s <- sample(levels(factor(avocado$region)), 8)
+avocado2 <- avocado %>% filter(region %in% s)
+
+plot2 <- ggplot(avocado2, aes(x=Date, y=Total.Volume, colour = factor(region)))
+plot2 + theme_gdocs() + scale_color_gdocs() + geom_point()
+
+
+#Wall Street Journal style (max 6 colours)
+
+s <- sample(levels(factor(avocado$region)), 3)
+avocado3 <- avocado %>% filter(region %in% s)
+
+plot3 <- ggplot(avocado3, aes(x=Date, y=AveragePrice, colour = factor(region)))
+plot3 + theme_wsj() + scale_colour_wsj("colors6", "") + geom_point()
+
+
+#The Economist style
+
+plot4 <- ggplot(avocado3, aes(x=Date,y=AveragePrice, fill = factor(region)))
+plot4 + theme_economist() + scale_colour_economist() + geom_bar(stat = 'identity')
+
+
+# Paul Tol style
+
+avocado5 <- avocado %>% filter(region %in% c('Detroit', 'GreatLakes'))
+
+plot5 <- ggplot(avocado5, aes(x=Date, y=Total.Bags, colour = factor(region)))
+plot5 + geom_smooth() + scale_color_ptol("cyl") + theme_minimal() + geom_point()
+
+
+# Solarized style
+
+
+plot6 <- ggplot(avocado3, aes(x=Total.Volume, y=Large.Bags, colour = factor(region)))
+plot6 + geom_point()  + theme_solarized() + scale_colour_solarized('blue') + facet_wrap(~ region)
+
+# Excel style
+
+plot7 <- ggplot(avocado3, aes(x=Total.Volume, y=Total.Bags, colour = factor(region)))
+plot7 + geom_point() + theme_excel() + scale_colour_excel() + facet_grid(~region)
+
+# highcharts
+
+plot7 + geom_point() + theme_hc() + scale_colour_hc()
+
+
+
+#Some coordinate transformation
+
+pl + geom_smooth(method = 'lm') + coord_trans(x = "log10")
+pl + geom_smooth(method = 'lm') + scale_x_log10()
+
+# The difference between transforming the scales and
+# transforming the coordinate system is that scale
+# transformation occurs BEFORE statistics, and coordinate
+# transformation afterwards.  Coordinate transformation also
+# changes the shape of geoms.
+
+pl + coord_trans(x = "sqrt", xlim = c(100000, 500000), ylim=c(500, 200000))
+
+
+
+#Big avocado plot (I think the line colours are switched, but I didn't care
+#to fix that)
+
+
+avocado_final <- avocado %>% filter(region == 'Seattle')
+
+
+
+plot_final <- ggplot(avocado_final, aes(x=Total.Volume, y=AveragePrice, colour = type)) + ggtitle("Avocado Prices in Seattle and the US, 2015-2018")
+plot_final <- plot_final + geom_point() + geom_smooth(method = "lm", se = FALSE) + scale_x_log10(n.breaks = 8) + scale_y_continuous(labels = dollar)
+plot_final <- plot_final + theme_economist() + scale_colour_economist()
+plot_final <- plot_final + labs(x = "Total number of avocados sold", y = "Average price of a single avocado")
+plot_final <- plot_final + theme(
+  axis.title.x = element_text(size = 12, face = "bold", vjust = -1),
+  axis.title.y = element_text(size = 12, face = "bold", vjust =4),
+  
+  plot.title = element_text(lineheight=.8, face="bold")
+)
+
+plot_final
+
+prices <-  avocado %>% filter(region == 'Seattle' | region == 'TotalUS')
+prices <- mutate(prices, type = ifelse(region == 'TotalUS', 'Average US', type))
+
+plot_aux <- ggplot(prices, aes(x=Date, y=AveragePrice, colour = type)) + scale_y_continuous(labels = dollar)
+plot_aux <- plot_aux + theme_economist_white() + scale_colour_economist() + geom_smooth(data = prices[prices$type == 'organic',]) +
+  geom_smooth(data = prices[prices$type == 'conventional',]) + geom_smooth(data = prices[prices$type == 'Average US',])
+plot_aux <- plot_aux + labs(x='',y = "Average price") + theme(axis.text.x = element_text(angle = 30), axis.title.y = element_text(vjust = 4))
+
+
+plot_aux <- plot_aux + scale_x_date(breaks = date_breaks(width = '4 months'),
+                                    labels = date_format("%b %y"))
+
+vp1 <-viewport(width = 1, height = 1, x=0.5, y=0.5)
+
+vp2 <-viewport(width = 0.6, height = 0.48, x = 0.69, y = 0.75)
+
+
+print(plot_final, vp = vp1)
+print(plot_aux, vp = vp2)
+
